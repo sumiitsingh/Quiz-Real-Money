@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Game History - Quiz Real Money</title>
+
+  <link rel="stylesheet" href="history.css">
+</head>
+
+<body>
+
+  <header class="history-header">
+
+    <div class="logo">
+      QUIZ<span>₹</span>
+    </div>
+
+    <button
+      id="backDashboardBtn"
+      class="back-btn"
+    >
+      ← Dashboard
+    </button>
+
+  </header>
+
+
+  <main class="history-container">
+
+    <section class="page-heading">
+      <h1>Game History</h1>
+      <p>
+        Check your previous quiz games and rewards.
+      </p>
+    </section>
+
+
+    <!-- SUMMARY -->
+
+    <section class="history-stats">
+
+      <div class="stat-card">
+        <div class="stat-icon">🎮</div>
+
+        <div>
+          <span>Total Games</span>
+          <strong id="totalGames">0</strong>
+        </div>
+      </div>
+
+
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+
+        <div>
+          <span>Wins</span>
+          <strong id="totalWins">0</strong>
+        </div>
+      </div>
+
+
+      <div class="stat-card">
+        <div class="stat-icon">❌</div>
+
+        <div>
+          <span>Losses</span>
+          <strong id="totalLosses">0</strong>
+        </div>
+      </div>
+
+
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+
+        <div>
+          <span>Total Reward</span>
+          <strong id="totalReward">₹0</strong>
+        </div>
+      </div>
+
+    </section>
+
+
+    <!-- LOADING -->
+
+    <div
+      id="loadingBox"
+      class="loading-box"
+    >
+      Loading history...
+    </div>
+
+
+    <!-- ERROR -->
+
+    <div
+      id="errorBox"
+      class="error-box"
+      style="display:none;"
+    ></div>
+
+
+    <!-- EMPTY -->
+
+    <div
+      id="emptyBox"
+      class="empty-box"
+      style="display:none;"
+    >
+
+      <div class="empty-icon">
+        🎮
+      </div>
+
+      <h2>No Games Yet</h2>
+
+      <p>
+        You haven't played any quiz yet.
+      </p>
+
+      <button
+        id="playNowBtn"
+        class="play-btn"
+      >
+        Play Now
+      </button>
+
+    </div>
+
+
+    <!-- HISTORY LIST -->
+
+    <section
+      id="historySection"
+      class="history-section"
+      style="display:none;"
+    >
+
+      <div class="section-title">
+        <h2>Previous Games</h2>
+      </div>
+
+      <div
+        id="historyList"
+        class="history-list"
+      ></div>
+
+    </section>
+
+  </main>
+
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="firebase.js"></script>
+
+  <script src="history.js"></script>
+
+</body>
+</html>

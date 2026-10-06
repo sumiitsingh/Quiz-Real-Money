@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Admin Dashboard - Quiz Website</title>
+
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+
+  <header class="admin-header">
+
+    <div class="admin-header-left">
+
+      <div class="admin-logo">
+        QUIZ ADMIN
+      </div>
+
+      <span id="adminEmailDisplay"></span>
+
+    </div>
+
+    <button
+      id="adminLogoutBtn"
+      class="logout-btn"
+    >
+      Logout
+    </button>
+
+  </header>
+
+
+  <main class="admin-container">
+
+    <section class="admin-title-section">
+
+      <div>
+
+        <h1>Winner Management</h1>
+
+        <p>
+          Only claimed winners and their payment requests are shown here.
+        </p>
+
+      </div>
+
+      <button
+        id="refreshWinnersBtn"
+        class="refresh-btn"
+      >
+        ↻ Refresh
+      </button>
+
+    </section>
+
+
+    <!-- =====================================================
+         STATS
+    ====================================================== -->
+
+    <section class="admin-stats">
+
+      <div class="stat-card">
+        <span class="stat-label">
+          Total Winners
+        </span>
+
+        <strong id="totalWinners">
+          0
+        </strong>
+      </div>
+
+
+      <div class="stat-card">
+        <span class="stat-label">
+          Pending
+        </span>
+
+        <strong id="pendingWinners">
+          0
+        </strong>
+      </div>
+
+
+      <div class="stat-card">
+        <span class="stat-label">
+          Processing
+        </span>
+
+        <strong id="processingWinners">
+          0
+        </strong>
+      </div>
+
+
+      <div class="stat-card">
+        <span class="stat-label">
+          Paid
+        </span>
+
+        <strong id="paidWinners">
+          0
+        </strong>
+      </div>
+
+
+      <div class="stat-card">
+        <span class="stat-label">
+          Total Reward
+        </span>
+
+        <strong id="totalReward">
+          ₹0
+        </strong>
+      </div>
+
+    </section>
+
+
+    <!-- =====================================================
+         WINNERS
+    ====================================================== -->
+
+    <section class="winner-section">
+
+      <div
+        id="adminMessage"
+        class="admin-message"
+      ></div>
+
+
+      <div
+        id="winnerLoading"
+        class="loading-box"
+      >
+        Loading winners...
+      </div>
+
+
+      <div
+        id="noWinners"
+        class="no-winners"
+        style="display:none;"
+      >
+
+        <div class="no-winners-icon">
+          🏆
+        </div>
+
+        <h2>
+          No Winners Yet
+        </h2>
+
+        <p>
+          When a player claims a reward,
+          the winner will appear here.
+        </p>
+
+      </div>
+
+
+      <div
+        id="winnerTableWrapper"
+        class="winner-table-wrapper"
+        style="display:none;"
+      >
+
+        <table class="winner-table">
+
+          <thead>
+
+            <tr>
+
+              <th>
+                Winner
+              </th>
+
+              <th>
+                Reward
+              </th>
+
+              <th>
+                UPI Details
+              </th>
+
+              <th>
+                Game
+              </th>
+
+              <th>
+                Requested
+              </th>
+
+              <th>
+                Status
+              </th>
+
+              <th>
+                Action
+              </th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody id="winnerTableBody"></tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =====================================================
+       SUPABASE
+  ====================================================== -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script src="firebase.js"></script>
+
+
+  <!-- =====================================================
+       ADMIN DASHBOARD LOGIC
+  ====================================================== -->
+
+  <script>
+
+    let adminUser = null;
+
+    let winnerPayments = [];
+
+
+    /* =====================================================
+       ELEMENTS
+    ====================================================== */
+
+    const adminEmailDisplay =
+      document.getElementById(
+        "adminEmailDisplay"
+      );
+
+    const adminLogoutBtn =
+      document.getElementById(
+        "adminLogoutBtn"
+      );
+
+    const refreshWinnersBtn =
+      document.getElementById(
+        "refreshWinnersBtn"
+      );
+
+    const winnerLoading =
+      document.getElementById(
+        "winnerLoading"
+      );
+
+    const noWinners =
+      document.getElementById(
+        "noWinners"
+      );
+
+    const winnerTableWrapper =
+      document.getElementById(
+        "winnerTableWrapper"
+      );
+
+    const winnerTableBody =
+      document.getElementById(
+        "winnerTableBody"
+      );
+
+    const adminMessage =
+      document.getElementById(
+        "adminMessage"
+      );
+
+    const totalWinners =
+      document.getElementById(
+        "totalWinners"
+      );
+
+    const pendingWinners =
+      document.getElementById(
+        "pendingWinners"
+      );
+
+    const processingWinners =
+      document.getElementById(
+        "processingWinners"
+      );
+
+    const paidWinners =
+      document.getElementById(
+        "paidWinners"
+      );
+
+    const totalReward =
+      document.getElementById(
+        "totalReward"
+      );
+
+
+    /* =====================================================
+       PAGE START
+    ====================================================== */
+
+    document.addEventListener(
+      "DOMContentLoaded",
+      async () => {
+
+        await initAdminDashboard();
+
+      }
+    );
+
+
+    /* =====================================================
+       ADMIN AUTH
+    ====================================================== */
+
+    async function initAdminDashboard() {
+
+      try {
+
+        const {
+          data: sessionData,
+          error: sessionError
+        } =
+          await supabaseClient
+            .auth
+            .getSession();
+
+
+        if (sessionError) {
+          throw sessionError;
+        }
+
+
+        if (
+          !sessionData ||
+          !sessionData.session
+        ) {
+
+          window.location.href =
+            "admin-login.html";
+
+          return;
+        }
+
+
+        adminUser =
+          sessionData.session.user;
+
+
+        /*
+         * Admin access email se nahi,
+         * profiles.role se verify hoga.
+         */
+
+        const {
+          data: profile,
+          error: profileError
+        } =
+          await supabaseClient
+            .from("profiles")
+            .select(
+              "id, full_name, email, role"
+            )
+            .eq(
+              "id",
+              adminUser.id
+            )
+            .single();
+
+
+        if (profileError) {
+          throw profileError;
+        }
+
+
+        if (
+          !profile ||
+          profile.role !== "admin"
+        ) {
+
+          alert(
+            "Admin access required."
+          );
+
+          await supabaseClient
+            .auth
+            .signOut();
+
+          window.location.href =
+            "admin-login.html";
+
+          return;
+        }
+
+
+        adminEmailDisplay.textContent =
+          profile.email ||
+          adminUser.email ||
+          "";
+
+
+        await loadWinners();
+
+
+      } catch (error) {
+
+        console.error(
+          "Admin initialization error:",
+          error
+        );
+
+        showMessage(
+          error.message ||
+          "Unable to load admin dashboard.",
+          true
+        );
+
+      }
+
+    }
+
+
+    /* =====================================================
+       LOAD WINNERS
+    ====================================================== */
+
+    async function loadWinners() {
+
+      setLoading(true);
+
+      clearMessage();
+
+
+      try {
+
+        /*
+         * STEP 1:
+         * Payment requests directly fetch karo.
+         *
+         * UPI details yahin se milengi:
+         * payout_method
+         * payout_identifier
+         */
+
+        const {
+          data: payments,
+          error: paymentError
+        } =
+          await supabaseClient
+            .from("payment_requests")
+            .select(`
+              id,
+              game_id,
+              user_id,
+              amount,
+              status,
+              payout_method,
+              payout_identifier,
+              admin_note,
+              requested_at,
+              updated_at
+            `)
+            .order(
+              "requested_at",
+              {
+                ascending: false
+              }
+            );
+
+
+        if (paymentError) {
+          throw paymentError;
+        }
+
+
+        /*
+         * Sirf actual claimed winners.
+         */
+
+        const claimedPayments =
+          (payments || [])
+            .filter(
+              payment =>
+                Number(payment.amount) > 0
+            );
+
+
+        if (
+          claimedPayments.length === 0
+        ) {
+
+          winnerPayments = [];
+
+          renderStats();
+
+          showNoWinners();
+
+          setLoading(false);
+
+          return;
+        }
+
+
+        /*
+         * STEP 2:
+         * Unique user IDs.
+         */
+
+        const userIds =
+          [
+            ...new Set(
+              claimedPayments
+                .map(
+                  payment =>
+                    payment.user_id
+                )
+                .filter(Boolean)
+            )
+          ];
+
+
+        /*
+         * STEP 3:
+         * Unique game IDs.
+         */
+
+        const gameIds =
+          [
+            ...new Set(
+              claimedPayments
+                .map(
+                  payment =>
+                    payment.game_id
+                )
+                .filter(Boolean)
+            )
+          ];
+
+
+        /*
+         * STEP 4:
+         * Profiles fetch.
+         */
+
+        let profiles = [];
+
+
+        if (userIds.length > 0) {
+
+          const {
+            data,
+            error
+          } =
+            await supabaseClient
+              .from("profiles")
+              .select(`
+                id,
+                full_name,
+                email
+              `)
+              .in(
+                "id",
+                userIds
+              );
+
+
+          if (error) {
+            throw error;
+          }
+
+
+          profiles =
+            data || [];
+
+        }
+
+
+        /*
+         * STEP 5:
+         * Games fetch.
+         */
+
+        let games = [];
+
+
+        if (gameIds.length > 0) {
+
+          const {
+            data,
+            error
+          } =
+            await supabaseClient
+              .from("games")
+              .select(`
+                id,
+                user_id,
+                status,
+                correct_answers,
+                questions_answered,
+                reward_amount,
+                reward_claimed,
+                created_at,
+                updated_at
+              `)
+              .in(
+                "id",
+                gameIds
+              );
+
+
+          if (error) {
+            throw error;
+          }
+
+
+          games =
+            data || [];
+
+        }
+
+
+        /*
+         * Convert arrays to maps.
+         */
+
+        const profileMap =
+          new Map(
+            profiles.map(
+              profile => [
+                profile.id,
+                profile
+              ]
+            )
+          );
+
+
+        const gameMap =
+          new Map(
+            games.map(
+              game => [
+                game.id,
+                game
+              ]
+            )
+          );
+
+
+        /*
+         * STEP 6:
+         * Combine everything.
+         */
+
+        winnerPayments =
+          claimedPayments
+            .map(
+              payment => {
+
+                const profile =
+                  profileMap.get(
+                    payment.user_id
+                  ) || null;
+
+
+                const game =
+                  gameMap.get(
+                    payment.game_id
+                  ) || null;
+
+
+                /*
+                 * Extra safety:
+                 * Only show payment where game
+                 * actually says reward_claimed=true.
+                 */
+
+                if (
+                  game &&
+                  game.reward_claimed !== true
+                ) {
+
+                  return null;
+
+                }
+
+
+                return {
+                  payment,
+                  profile,
+                  game
+                };
+
+              }
+            )
+            .filter(Boolean);
+
+
+        renderStats();
+
+
+        if (
+          winnerPayments.length === 0
+        ) {
+
+          showNoWinners();
+
+        } else {
+
+          renderWinnerTable();
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Load winners error:",
+          error
+        );
+
+        winnerPayments = [];
+
+        renderStats();
+
+        showNoWinners();
+
+        showMessage(
+          "Unable to load winners: " +
+          (
+            error?.message ||
+            error
+          ),
+          true
+        );
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    }
+
+
+    /* =====================================================
+       STATS
+    ====================================================== */
+
+    function renderStats() {
+
+      const total =
+        winnerPayments.length;
+
+
+      const pending =
+        winnerPayments.filter(
+          item =>
+            item.payment.status ===
+            "pending"
+        ).length;
+
+
+      const processing =
+        winnerPayments.filter(
+          item =>
+            item.payment.status ===
+            "processing"
+        ).length;
+
+
+      const paid =
+        winnerPayments.filter(
+          item =>
+            item.payment.status ===
+            "paid"
+        ).length;
+
+
+      const reward =
+        winnerPayments.reduce(
+          (
+            totalAmount,
+            item
+          ) => {
+
+            return (
+              totalAmount +
+              Number(
+                item.payment.amount ||
+                0
+              )
+            );
+
+          },
+          0
+        );
+
+
+      totalWinners.textContent =
+        total;
+
+
+      pendingWinners.textContent =
+        pending;
+
+
+      processingWinners.textContent =
+        processing;
+
+
+      paidWinners.textContent =
+        paid;
+
+
+      totalReward.textContent =
+        `₹${reward}`;
+
+    }
+
+
+    /* =====================================================
+       WINNER TABLE
+    ====================================================== */
+
+    function renderWinnerTable() {
+
+      noWinners.style.display =
+        "none";
+
+      winnerTableWrapper.style.display =
+        "block";
+
+
+      winnerTableBody.innerHTML =
+        "";
+
+
+      winnerPayments.forEach(
+        item => {
+
+          const payment =
+            item.payment;
+
+          const profile =
+            item.profile;
+
+          const game =
+            item.game;
+
+
+          const row =
+            document.createElement(
+              "tr"
+            );
+
+
+          /*
+           * PLAYER NAME
+           *
+           * Profile mil gaya to full_name.
+           * Nahi mila to email.
+           * Email bhi na mile to user_id.
+           */
+
+          const playerName =
+  profile?.full_name?.trim() ||
+  "Unknown Player";
+
+
+          const email =
+            profile?.email ||
+            "No email";
+
+
+          const amount =
+            Number(
+              payment.amount || 0
+            );
+
+
+          /*
+           * IMPORTANT:
+           *
+           * UPI details ab PROFILE se nahi,
+           * PAYMENT REQUEST se li ja rahi hain.
+           *
+           * Claim RPC ke time:
+           *
+           * payout_method
+           * payout_identifier
+           *
+           * payment_requests me save hote hain.
+           */
+
+          const payoutIdentifier =
+            payment?.payout_identifier
+              ? String(
+                  payment.payout_identifier
+                ).trim()
+              : "";
+
+
+          const payoutMethod =
+            payment?.payout_method
+              ? String(
+                  payment.payout_method
+                ).trim()
+              : "";
+
+
+          let upiHTML =
+            "No payout details";
+
+
+          if (payoutIdentifier) {
+
+            if (
+              payoutMethod ===
+              "upi_id"
+            ) {
+
+              upiHTML = `
+                <div>
+                  <strong>UPI ID:</strong>
+                  ${escapeHtml(
+                    payoutIdentifier
+                  )}
+                </div>
+              `;
+
+            } else if (
+              payoutMethod ===
+              "upi_number"
+            ) {
+
+              upiHTML = `
+                <div>
+                  <strong>UPI Number:</strong>
+                  ${escapeHtml(
+                    payoutIdentifier
+                  )}
+                </div>
+              `;
+
+            } else {
+
+              upiHTML = `
+                <div>
+                  <strong>UPI:</strong>
+                  ${escapeHtml(
+                    payoutIdentifier
+                  )}
+                </div>
+              `;
+
+            }
+
+          }
+
+
+          const correct =
+            game?.correct_answers ??
+            0;
+
+
+          const questions =
+            game?.questions_answered ??
+            0;
+
+
+          const requestedDate =
+            formatDate(
+              payment.requested_at
+            );
+
+
+          const status =
+            payment.status ||
+            "pending";
+
+
+          row.innerHTML = `
+
+            <td>
+
+              <div>
+                <strong>
+                  ${escapeHtml(
+                    playerName
+                  )}
+                </strong>
+              </div>
+
+              <small>
+                ${escapeHtml(
+                  email
+                )}
+              </small>
+
+            </td>
+
+
+            <td>
+
+              <strong>
+                ₹${amount}
+              </strong>
+
+            </td>
+
+
+            <td>
+
+              ${upiHTML}
+
+            </td>
+
+
+            <td>
+
+              <div>
+                <strong>
+                  ${correct}
+                  / 20 Correct
+                </strong>
+              </div>
+
+              <small>
+                ${questions}
+                Questions
+              </small>
+
+            </td>
+
+
+            <td>
+
+              ${requestedDate}
+
+            </td>
+
+
+            <td>
+
+              <span
+                class="payment-status status-${escapeHtml(
+                  status
+                )}"
+              >
+                ${escapeHtml(
+                  status.toUpperCase()
+                )}
+              </span>
+
+            </td>
+
+
+            <td>
+
+              <select
+                class="payment-status-select"
+                data-payment-id="${escapeHtml(
+                  payment.id
+                )}"
+              >
+
+                <option
+                  value="pending"
+                  ${
+                    status === "pending"
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  Pending
+                </option>
+
+
+                <option
+                  value="processing"
+                  ${
+                    status === "processing"
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  Processing
+                </option>
+
+
+                <option
+                  value="paid"
+                  ${
+                    status === "paid"
+                      ? "selected"
+                      : ""
+                  }
+                >
+                  Paid
+                </option>
+
+              </select>
+
+            </td>
+
+          `;
+
+
+          winnerTableBody.appendChild(
+            row
+          );
+
+        }
+      );
+
+
+      /*
+       * Status dropdown listeners.
+       */
+
+      document
+        .querySelectorAll(
+          ".payment-status-select"
+        )
+        .forEach(
+          select => {
+
+            select.addEventListener(
+              "change",
+              async event => {
+
+                const paymentId =
+                  event.target
+                    .dataset
+                    .paymentId;
+
+
+                const newStatus =
+                  event.target.value;
+
+
+                await updatePaymentStatus(
+                  paymentId,
+                  newStatus,
+                  event.target
+                );
+
+              }
+            );
+
+          }
+        );
+
+    }
+
+
+    /* =====================================================
+       UPDATE PAYMENT STATUS
+    ====================================================== */
+
+    async function updatePaymentStatus(
+      paymentId,
+      newStatus,
+      selectElement
+    ) {
+
+      selectElement.disabled =
+        true;
+
+
+      try {
+
+        const {
+          data,
+          error
+        } =
+          await supabaseClient.rpc(
+            "admin_update_payment_status",
+            {
+              p_payment_id:
+                paymentId,
+
+              p_status:
+                newStatus,
+
+              p_admin_note:
+                null
+            }
+          );
+
+
+        if (error) {
+          throw error;
+        }
+
+
+        if (
+          !data ||
+          data.success !== true
+        ) {
+
+          throw new Error(
+            "Payment status update failed."
+          );
+
+        }
+
+
+        /*
+         * Local data update.
+         */
+
+        const item =
+          winnerPayments.find(
+            entry =>
+              entry.payment.id ===
+              paymentId
+          );
+
+
+        if (item) {
+
+          item.payment.status =
+            newStatus;
+
+        }
+
+
+        renderStats();
+
+
+        showMessage(
+          `Payment status changed to ${newStatus}.`,
+          false
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          "Payment status error:",
+          error
+        );
+
+
+        showMessage(
+          "Status update failed: " +
+          (
+            error?.message ||
+            error
+          ),
+          true
+        );
+
+
+        /*
+         * Reload DB state.
+         */
+
+        await loadWinners();
+
+      } finally {
+
+        selectElement.disabled =
+          false;
+
+      }
+
+    }
+
+
+    /* =====================================================
+       REFRESH
+    ====================================================== */
+
+    refreshWinnersBtn.addEventListener(
+      "click",
+      async () => {
+
+        await loadWinners();
+
+      }
+    );
+
+
+    /* =====================================================
+       LOGOUT
+    ====================================================== */
+
+    adminLogoutBtn.addEventListener(
+      "click",
+      async () => {
+
+        try {
+
+          await supabaseClient
+            .auth
+            .signOut();
+
+        } finally {
+
+          window.location.href =
+            "admin-login.html";
+
+        }
+
+      }
+    );
+
+
+    /* =====================================================
+       UI HELPERS
+    ====================================================== */
+
+    function setLoading(
+      isLoading
+    ) {
+
+      if (isLoading) {
+
+        winnerLoading.style.display =
+          "block";
+
+        noWinners.style.display =
+          "none";
+
+        winnerTableWrapper.style.display =
+          "none";
+
+      } else {
+
+        winnerLoading.style.display =
+          "none";
+
+      }
+
+    }
+
+
+    function showNoWinners() {
+
+      winnerLoading.style.display =
+        "none";
+
+      winnerTableWrapper.style.display =
+        "none";
+
+      noWinners.style.display =
+        "block";
+
+    }
+
+
+    function showMessage(
+      message,
+      isError = false
+    ) {
+
+      adminMessage.textContent =
+        message;
+
+      adminMessage.style.display =
+        "block";
+
+      adminMessage.style.color =
+        isError
+          ? "#dc2626"
+          : "#15803d";
+
+
+      setTimeout(
+        () => {
+
+          adminMessage.style.display =
+            "none";
+
+        },
+        4000
+      );
+
+    }
+
+
+    function clearMessage() {
+
+      adminMessage.textContent =
+        "";
+
+      adminMessage.style.display =
+        "none";
+
+    }
+
+
+    function formatDate(
+      value
+    ) {
+
+      if (!value) {
+        return "—";
+      }
+
+
+      const date =
+        new Date(value);
+
+
+      if (
+        Number.isNaN(
+          date.getTime()
+        )
+      ) {
+
+        return "—";
+
+      }
+
+
+      return date.toLocaleString(
+        "en-IN",
+        {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        }
+      );
+
+    }
+
+
+    function escapeHtml(
+      value
+    ) {
+
+      if (
+        value === null ||
+        value === undefined
+      ) {
+
+        return "";
+
+      }
+
+
+      return String(value)
+
+        .replaceAll(
+          "&",
+          "&amp;"
+        )
+
+        .replaceAll(
+          "<",
+          "&lt;"
+        )
+
+        .replaceAll(
+          ">",
+          "&gt;"
+        )
+
+        .replaceAll(
+          '"',
+          "&quot;"
+        )
+
+        .replaceAll(
+          "'",
+          "&#039;"
+        );
+
+    }
+
+  </script>
+
+</body>
+</html>

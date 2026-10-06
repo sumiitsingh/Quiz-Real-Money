@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Admin - Winners</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin-winners.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="firebase.js"></script>
+</head>
+
+<body>
+
+  <header class="admin-header">
+
+    <div class="admin-logo">
+      QUIZ ADMIN
+    </div>
+
+    <div class="admin-header-right">
+
+      <span id="adminName">
+        Admin
+      </span>
+
+      <button id="dashboardBtn" class="admin-header-btn">
+        Dashboard
+      </button>
+
+      <button id="paymentsBtn" class="admin-header-btn">
+        Payments
+      </button>
+
+      <button id="logoutBtn" class="admin-header-btn logout-btn">
+        Logout
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <main class="winners-container">
+
+    <div class="page-heading">
+
+      <div>
+        <h1>Winners</h1>
+        <p>Players who have claimed quiz rewards.</p>
+      </div>
+
+      <button id="refreshBtn" class="refresh-btn">
+        ↻ Refresh
+      </button>
+
+    </div>
+
+
+    <!-- STATS -->
+
+    <section class="winner-stats">
+
+      <div class="winner-stat-card">
+        <span>🏆</span>
+        <strong id="totalWinners">0</strong>
+        <small>Total Winners</small>
+      </div>
+
+      <div class="winner-stat-card">
+        <span>💰</span>
+        <strong id="totalReward">₹0</strong>
+        <small>Total Rewards</small>
+      </div>
+
+      <div class="winner-stat-card">
+        <span>⏳</span>
+        <strong id="pendingCount">0</strong>
+        <small>Pending</small>
+      </div>
+
+      <div class="winner-stat-card">
+        <span>✅</span>
+        <strong id="paidCount">0</strong>
+        <small>Paid</small>
+      </div>
+
+    </section>
+
+
+    <!-- LOADING -->
+
+    <div id="loadingBox" class="state-box">
+      Loading winners...
+    </div>
+
+
+    <!-- ERROR -->
+
+    <div id="errorBox" class="state-box error hidden">
+    </div>
+
+
+    <!-- EMPTY -->
+
+    <div id="emptyBox" class="state-box hidden">
+      <div class="empty-icon">🏆</div>
+      <h3>No Winners Yet</h3>
+      <p>Claimed rewards will appear here.</p>
+    </div>
+
+
+    <!-- WINNERS TABLE -->
+
+    <section id="winnersSection" class="winners-card hidden">
+
+      <div class="table-wrapper">
+
+        <table>
+
+          <thead>
+            <tr>
+              <th>Player</th>
+              <th>Email</th>
+              <th>Reward</th>
+              <th>Correct</th>
+              <th>UPI ID</th>
+              <th>UPI Number</th>
+              <th>Payment</th>
+              <th>Claimed</th>
+            </tr>
+          </thead>
+
+          <tbody id="winnersTableBody">
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <script src="admin-winners.js"></script>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Admin - Payments</title>
+
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin-payments.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="firebase.js"></script>
+</head>
+
+<body>
+
+  <header class="admin-header">
+
+    <div class="admin-logo">
+      QUIZ ADMIN
+    </div>
+
+    <div class="admin-header-right">
+
+      <span id="adminName">
+        Admin
+      </span>
+
+      <button id="dashboardBtn" class="admin-header-btn">
+        Dashboard
+      </button>
+
+      <button id="winnersBtn" class="admin-header-btn">
+        Winners
+      </button>
+
+      <button id="logoutBtn" class="admin-header-btn logout-btn">
+        Logout
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <main class="payments-container">
+
+    <div class="page-heading">
+
+      <div>
+        <h1>Payments</h1>
+        <p>Manage winner reward payments.</p>
+      </div>
+
+      <button id="refreshBtn" class="refresh-btn">
+        ↻ Refresh
+      </button>
+
+    </div>
+
+
+    <!-- STATS -->
+
+    <section class="payment-stats">
+
+      <div class="payment-stat-card">
+        <span>⏳</span>
+        <strong id="pendingCount">0</strong>
+        <small>Pending</small>
+      </div>
+
+      <div class="payment-stat-card">
+        <span>🔄</span>
+        <strong id="processingCount">0</strong>
+        <small>Processing</small>
+      </div>
+
+      <div class="payment-stat-card">
+        <span>✅</span>
+        <strong id="paidCount">0</strong>
+        <small>Paid</small>
+      </div>
+
+      <div class="payment-stat-card">
+        <span>💰</span>
+        <strong id="totalAmount">₹0</strong>
+        <small>Total Amount</small>
+      </div>
+
+    </section>
+
+
+    <!-- FILTER -->
+
+    <section class="filter-card">
+
+      <label for="statusFilter">
+        Payment Status
+      </label>
+
+      <select id="statusFilter">
+
+        <option value="all">
+          All Payments
+        </option>
+
+        <option value="pending">
+          Pending
+        </option>
+
+        <option value="processing">
+          Processing
+        </option>
+
+        <option value="paid">
+          Paid
+        </option>
+
+      </select>
+
+    </section>
+
+
+    <!-- LOADING -->
+
+    <div id="loadingBox" class="state-box">
+      Loading payments...
+    </div>
+
+
+    <!-- ERROR -->
+
+    <div id="errorBox" class="state-box error hidden">
+    </div>
+
+
+    <!-- EMPTY -->
+
+    <div id="emptyBox" class="state-box hidden">
+
+      <div class="empty-icon">
+        💳
+      </div>
+
+      <h3>No Payments</h3>
+
+      <p>
+        No payment requests found.
+      </p>
+
+    </div>
+
+
+    <!-- PAYMENT LIST -->
+
+    <section
+      id="paymentsSection"
+      class="payments-list hidden"
+    >
+    </section>
+
+  </main>
+
+
+  <script src="admin-payments.js"></script>
+
+</body>
+</html>
