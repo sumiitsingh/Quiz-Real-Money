@@ -4,7 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 /* =========================================================
-   GAME STATE
+   GAME CONFIG
 ========================================================= */
 
 const GAME_MAX_QUESTIONS = 20;
@@ -15,6 +15,11 @@ const REWARDS = {
   10: 200,
   20: 500
 };
+
+
+/* =========================================================
+   GAME STATE
+========================================================= */
 
 let allQuestions = [];
 let gameQuestions = [];
@@ -27,10 +32,10 @@ let timerInterval = null;
 
 let answered = false;
 let gameFinished = false;
-
 let pendingMilestone = null;
 
 let currentUser = null;
+let currentGameId = null;
 
 
 /* =========================================================
@@ -115,9 +120,7 @@ const claimFinalBtn =
 ========================================================= */
 
 async function startGame() {
-
   try {
-
     const {
       data: sessionData,
       error: sessionError
@@ -132,11 +135,11 @@ async function startGame() {
       return;
     }
 
-    currentUser =
-      sessionData.session.user;
-
+    currentUser = sessionData.session.user;
 
     await loadPlayerProfile();
+
+    await createGameHistoryRecord();
 
     await loadQuestions();
 
@@ -147,21 +150,27 @@ async function startGame() {
     showQuestion();
 
   } catch (error) {
-
     console.error("Game start error:", error);
 
-    questionText.textContent =
-      "Unable to start the quiz.";
+    if (questionText) {
+      questionText.textContent =
+        "Unable to start the quiz.";
+    }
 
-    optionsContainer.innerHTML = `
-      <div style="
-        padding:20px;
-        text-align:center;
-        color:#dc2626;
-      ">
-        ${escapeHtml(error.message)}
-      </div>
-    `;
+    if (optionsContainer) {
+      optionsContainer.innerHTML = `
+        <div style="
+          padding:20px;
+          text-align:center;
+          color:#dc2626;
+        ">
+          ${escapeHtml(
+            error.message ||
+            "Something went wrong."
+          )}
+        </div>
+      `;
+    }
   }
 }
 
@@ -186,7 +195,9 @@ async function loadPlayerProfile() {
   }
 
   if (!profile) {
-    throw new Error("Player profile not found.");
+    throw new Error(
+      "Player profile not found."
+    );
   }
 
   if (profile.role === "admin") {
@@ -206,15 +217,104 @@ async function loadPlayerProfile() {
 
 
 /* =========================================================
+   CREATE GAME HISTORY RECORD
+========================================================= */
+
+async function createGameHistoryRecord() {
+
+  const {
+    data,
+    error
+  } = await supabaseClient.rpc(
+    "start_quiz_game",
+    {
+      p_total_questions:
+        GAME_MAX_QUESTIONS
+    }
+  );
+
+  if (error) {
+    console.error(
+      "Game history start error:",
+      error
+    );
+
+    throw new Error(
+      "Unable to create game history."
+    );
+  }
+
+  if (!data) {
+    throw new Error(
+      "Game ID was not created."
+    );
+  }
+
+  currentGameId = data;
+}
+
+
+/* =========================================================
+   UPDATE GAME HISTORY
+========================================================= */
+
+async function updateGameHistory(
+  status,
+  correctAnswers,
+  questionsAnswered
+) {
+
+  if (!currentGameId) {
+    return;
+  }
+
+  try {
+
+    const {
+      error
+    } = await supabaseClient.rpc(
+      "update_quiz_game",
+      {
+        p_game_id: currentGameId,
+        p_status: status,
+        p_correct_answers:
+          correctAnswers,
+        p_questions_answered:
+          questionsAnswered
+      }
+    );
+
+    if (error) {
+      console.error(
+        "Game history update error:",
+        error
+      );
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Game history update exception:",
+      error
+    );
+
+  }
+}
+
+
+/* =========================================================
    LOAD QUESTIONS
 ========================================================= */
 
 async function loadQuestions() {
 
   const response =
-    await fetch("questions.json", {
-      cache: "no-store"
-    });
+    await fetch(
+      "questions.json",
+      {
+        cache: "no-store"
+      }
+    );
 
   if (!response.ok) {
     throw new Error(
@@ -235,20 +335,39 @@ async function loadQuestions() {
     );
   }
 
-  allQuestions = data.questions;
+  allQuestions =
+    data.questions;
 }
 
 
 /* =========================================================
-   PREPARE RANDOM QUESTIONS
+   RANDOM 20 QUESTIONS
 ========================================================= */
 
 function prepareGameQuestions() {
 
   const shuffled =
-    [...allQuestions].sort(
-      () => Math.random() - 0.5
-    );
+    [...allQuestions];
+
+  for (
+    let i = shuffled.length - 1;
+    i > 0;
+    i--
+  ) {
+
+    const j =
+      Math.floor(
+        Math.random() * (i + 1)
+      );
+
+    [
+      shuffled[i],
+      shuffled[j]
+    ] = [
+      shuffled[j],
+      shuffled[i]
+    ];
+  }
 
   gameQuestions =
     shuffled.slice(
@@ -275,17 +394,23 @@ function showQuestion() {
     currentQuestionIndex >=
     gameQuestions.length
   ) {
+
     finishFinalGame();
+
     return;
   }
 
   answered = false;
+  pendingMilestone = null;
 
   clearTimer();
 
   hideMilestone();
   hideGameOver();
   hideFinalWin();
+
+  questionText.parentElement.style.display =
+    "block";
 
   const question =
     gameQuestions[
@@ -297,13 +422,16 @@ function showQuestion() {
 
   difficultyElement.textContent =
     String(
-      question.difficulty || "medium"
+      question.difficulty ||
+      "medium"
     ).toUpperCase();
 
   questionText.textContent =
     question.question;
 
-  answerMessage.textContent = "";
+  answerMessage.textContent =
+    "";
+
   answerMessage.className =
     "answer-message";
 
@@ -322,13 +450,16 @@ function showQuestion() {
 
 function renderOptions(question) {
 
-  optionsContainer.innerHTML = "";
+  optionsContainer.innerHTML =
+    "";
 
   question.options.forEach(
     (option) => {
 
       const button =
-        document.createElement("button");
+        document.createElement(
+          "button"
+        );
 
       button.type = "button";
 
@@ -350,7 +481,11 @@ function renderOptions(question) {
 
       button.addEventListener(
         "click",
-        () => handleAnswer(option.id)
+        () => {
+          handleAnswer(
+            option.id
+          );
+        }
       );
 
       optionsContainer.appendChild(
@@ -365,9 +500,14 @@ function renderOptions(question) {
    ANSWER
 ========================================================= */
 
-function handleAnswer(selectedAnswer) {
+function handleAnswer(
+  selectedAnswer
+) {
 
-  if (answered || gameFinished) {
+  if (
+    answered ||
+    gameFinished
+  ) {
     return;
   }
 
@@ -397,24 +537,28 @@ function handleAnswer(selectedAnswer) {
         button.dataset.optionId;
 
       /*
-       * Correct option is ALWAYS green
-       * after an answer is submitted.
+       * Correct option = GREEN
        */
+      if (
+        optionId ===
+        correctAnswer
+      ) {
 
-      if (optionId === correctAnswer) {
         button.classList.add(
           "correct"
         );
       }
 
       /*
-       * Selected wrong option becomes red.
+       * Selected wrong option = RED
        */
-
       if (
-        optionId === selectedAnswer &&
-        selectedAnswer !== correctAnswer
+        optionId ===
+        selectedAnswer &&
+        selectedAnswer !==
+        correctAnswer
       ) {
+
         button.classList.add(
           "wrong"
         );
@@ -422,6 +566,10 @@ function handleAnswer(selectedAnswer) {
     }
   );
 
+
+  /* =====================================================
+     CORRECT ANSWER
+  ===================================================== */
 
   if (
     selectedAnswer ===
@@ -443,68 +591,120 @@ function handleAnswer(selectedAnswer) {
 
 
     /*
-     * At 5 and 10 we pause BEFORE
-     * showing the next question.
+     * Save current progress.
+     */
+    updateGameHistory(
+      "playing",
+      correctCount,
+      currentQuestionIndex + 1
+    );
+
+
+    /*
+     * 5 CORRECT
      */
 
     if (
-      correctCount === 5 ||
+      correctCount === 5
+    ) {
+
+      setTimeout(
+        () => {
+          showMilestone();
+        },
+        450
+      );
+
+      return;
+    }
+
+
+    /*
+     * 10 CORRECT
+     */
+
+    if (
       correctCount === 10
     ) {
 
-      nextBtn.style.display =
-        "none";
-
-      setTimeout(() => {
-        showMilestone();
-      }, 450);
+      setTimeout(
+        () => {
+          showMilestone();
+        },
+        450
+      );
 
       return;
     }
 
 
     /*
-     * 20 correct = final reward.
+     * 20 CORRECT
      */
 
-    if (correctCount === 20) {
+    if (
+      correctCount === 20
+    ) {
 
-      nextBtn.style.display =
-        "none";
+      updateGameHistory(
+        "won",
+        20,
+        20
+      );
 
-      setTimeout(() => {
-        finishFinalGame();
-      }, 450);
+      setTimeout(
+        () => {
+          finishFinalGame();
+        },
+        450
+      );
 
       return;
     }
 
+
+    /*
+     * NEXT button
+     */
 
     showNextButton();
 
-  } else {
+    return;
+  }
 
-    answerMessage.textContent =
-      "Wrong answer!";
 
-    answerMessage.className =
-      "answer-message wrong-message";
+  /* =====================================================
+     WRONG ANSWER
+  ===================================================== */
 
-    /*
-     * Wrong answer = game over.
-     *
-     * We still show the correct answer
-     * in green for feedback.
-     */
+  answerMessage.textContent =
+    "Wrong answer!";
 
-    setTimeout(() => {
+  answerMessage.className =
+    "answer-message wrong-message";
+
+
+  /*
+   * Save lost game.
+   */
+
+  updateGameHistory(
+    "lost",
+    correctCount,
+    currentQuestionIndex + 1
+  );
+
+
+  setTimeout(
+    () => {
 
       endGame(
         "You selected the wrong answer."
       );
 
-    }, 700);
-  }
+    },
+    700
+  );
 }
 
 
@@ -518,11 +718,15 @@ function showNextButton() {
     "block";
 }
 
+
 nextBtn.addEventListener(
   "click",
   () => {
 
-    if (!answered) {
+    if (
+      !answered ||
+      gameFinished
+    ) {
       return;
     }
 
@@ -547,20 +751,35 @@ function startTimer() {
   updateTimerUI();
 
   timerInterval =
-    setInterval(() => {
+    setInterval(
+      () => {
 
-      timerValue--;
+        if (
+          answered ||
+          gameFinished
+        ) {
 
-      updateTimerUI();
+          clearTimer();
 
-      if (timerValue <= 0) {
+          return;
+        }
 
-        clearTimer();
+        timerValue--;
 
-        handleTimeout();
-      }
+        updateTimerUI();
 
-    }, 1000);
+        if (
+          timerValue <= 0
+        ) {
+
+          clearTimer();
+
+          handleTimeout();
+        }
+
+      },
+      1000
+    );
 }
 
 
@@ -572,7 +791,8 @@ function clearTimer() {
       timerInterval
     );
 
-    timerInterval = null;
+    timerInterval =
+      null;
   }
 }
 
@@ -582,7 +802,9 @@ function updateTimerUI() {
   timerElement.textContent =
     timerValue;
 
-  if (timerValue <= 3) {
+  if (
+    timerValue <= 3
+  ) {
 
     timerCircle.classList.add(
       "warning"
@@ -603,7 +825,10 @@ function updateTimerUI() {
 
 function handleTimeout() {
 
-  if (answered || gameFinished) {
+  if (
+    answered ||
+    gameFinished
+  ) {
     return;
   }
 
@@ -617,26 +842,28 @@ function handleTimeout() {
   const correctAnswer =
     question.correctAnswer;
 
-  const optionButtons =
-    document.querySelectorAll(
+
+  document
+    .querySelectorAll(
       ".option-btn"
+    )
+    .forEach(
+      (button) => {
+
+        button.disabled = true;
+
+        if (
+          button.dataset.optionId ===
+          correctAnswer
+        ) {
+
+          button.classList.add(
+            "correct"
+          );
+        }
+      }
     );
 
-  optionButtons.forEach(
-    (button) => {
-
-      button.disabled = true;
-
-      if (
-        button.dataset.optionId ===
-        correctAnswer
-      ) {
-        button.classList.add(
-          "correct"
-        );
-      }
-    }
-  );
 
   answerMessage.textContent =
     "Time's up!";
@@ -645,13 +872,27 @@ function handleTimeout() {
     "answer-message wrong-message";
 
 
-  setTimeout(() => {
+  /*
+   * Save timeout as loss.
+   */
 
-    endGame(
-      "You did not answer within 10 seconds."
-    );
+  updateGameHistory(
+    "lost",
+    correctCount,
+    currentQuestionIndex + 1
+  );
 
-  }, 700);
+
+  setTimeout(
+    () => {
+
+      endGame(
+        "You did not answer within 10 seconds."
+      );
+
+    },
+    700
+  );
 }
 
 
@@ -688,16 +929,31 @@ function hideMilestone() {
   milestoneBox.style.display =
     "none";
 
-  questionText.parentElement.style.display =
-    "block";
+  if (!gameFinished) {
+
+    questionText.parentElement.style.display =
+      "block";
+  }
 }
 
+
+/* =========================================================
+   CONTINUE AFTER MILESTONE
+========================================================= */
 
 continueBtn.addEventListener(
   "click",
   () => {
 
-    pendingMilestone = null;
+    if (
+      !pendingMilestone ||
+      gameFinished
+    ) {
+      return;
+    }
+
+    pendingMilestone =
+      null;
 
     currentQuestionIndex++;
 
@@ -716,7 +972,10 @@ claimBtn.addEventListener(
   "click",
   async () => {
 
-    if (!pendingMilestone) {
+    if (
+      !pendingMilestone ||
+      gameFinished
+    ) {
       return;
     }
 
@@ -725,12 +984,8 @@ claimBtn.addEventListener(
         pendingMilestone
       ];
 
-    /*
-     * Secure payment request will be
-     * connected here through Edge Function.
-     */
-
-    claimBtn.disabled = true;
+    claimBtn.disabled =
+      true;
 
     claimBtn.textContent =
       "Preparing Claim...";
@@ -750,15 +1005,14 @@ claimBtn.addEventListener(
       );
 
       alert(
-        "Reward claim system is not connected yet. Please try again after the secure payment backend is added."
+        "Reward claim backend is not connected yet."
       );
 
-      claimBtn.disabled = false;
+      claimBtn.disabled =
+        false;
 
       claimBtn.textContent =
         "Claim Reward";
-
-      return;
     }
   }
 );
@@ -791,10 +1045,19 @@ claimFinalBtn.addEventListener(
   "click",
   async () => {
 
-    claimFinalBtn.disabled = true;
+    if (
+      gameFinished !== true ||
+      correctCount !== 20
+    ) {
+      return;
+    }
+
+    claimFinalBtn.disabled =
+      true;
 
     claimFinalBtn.textContent =
       "Preparing Claim...";
+
 
     try {
 
@@ -810,10 +1073,11 @@ claimFinalBtn.addEventListener(
       );
 
       alert(
-        "Reward claim system is not connected yet. Please try again after the secure payment backend is added."
+        "Reward claim backend is not connected yet."
       );
 
-      claimFinalBtn.disabled = false;
+      claimFinalBtn.disabled =
+        false;
 
       claimFinalBtn.textContent =
         "Claim ₹500";
@@ -823,7 +1087,7 @@ claimFinalBtn.addEventListener(
 
 
 /* =========================================================
-   SECURE CLAIM PLACEHOLDER
+   CLAIM PLACEHOLDER
 ========================================================= */
 
 async function createSecureClaimRequest(
@@ -833,15 +1097,15 @@ async function createSecureClaimRequest(
   /*
    * IMPORTANT:
    *
-   * Do NOT insert reward directly into
-   * Supabase from the browser.
+   * Claim/payment is intentionally
+   * not written directly to Supabase.
    *
-   * This function will be replaced with
-   * the Supabase Edge Function call.
+   * Current project does not have
+   * the secure reward backend connected.
    */
 
   throw new Error(
-    "Secure claim backend not connected."
+    `Secure reward backend is not connected yet. Requested reward: ₹${reward}`
   );
 }
 
@@ -906,14 +1170,23 @@ function updateCurrentReward() {
 
   let reward = 0;
 
-  if (correctCount >= 10) {
-    reward = 200;
-  } else if (correctCount >= 5) {
-    reward = 50;
-  }
+  if (
+    correctCount >= 20
+  ) {
 
-  if (correctCount >= 20) {
     reward = 500;
+
+  } else if (
+    correctCount >= 10
+  ) {
+
+    reward = 200;
+
+  } else if (
+    correctCount >= 5
+  ) {
+
+    reward = 50;
   }
 
   currentRewardElement.textContent =
@@ -922,12 +1195,12 @@ function updateCurrentReward() {
 
 
 /* =========================================================
-   EXIT
+   EXIT GAME
 ========================================================= */
 
 exitGameBtn.addEventListener(
   "click",
-  () => {
+  async () => {
 
     const confirmed =
       confirm(
@@ -940,15 +1213,34 @@ exitGameBtn.addEventListener(
 
     clearTimer();
 
+    /*
+     * Save unfinished game as quit.
+     */
+
+    await updateGameHistory(
+      "quit",
+      correctCount,
+      currentQuestionIndex
+    );
+
     window.location.href =
       "dashboard.html";
   }
 );
 
 
+/* =========================================================
+   BACK TO DASHBOARD
+========================================================= */
+
 backDashboardBtn.addEventListener(
   "click",
-  () => {
+  async () => {
+
+    /*
+     * If game reached this screen,
+     * it is already marked lost.
+     */
 
     window.location.href =
       "dashboard.html";
@@ -970,9 +1262,24 @@ function escapeHtml(value) {
   }
 
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replaceAll(
+      "&",
+      "&amp;"
+    )
+    .replaceAll(
+      "<",
+      "&lt;"
+    )
+    .replaceAll(
+      ">",
+      "&gt;"
+    )
+    .replaceAll(
+      '"',
+      "&quot;"
+    )
+    .replaceAll(
+      "'",
+      "&#039;"
+    );
 }
