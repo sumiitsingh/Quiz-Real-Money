@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Create Account - Quiz Website</title>
+
+  <link rel="stylesheet" href="auth.css">
+</head>
+
+<body>
+
+  <div class="auth-container">
+
+    <div class="auth-card">
+
+      <h1>Create Account</h1>
+
+      <p class="auth-subtitle">
+        Join the Quiz Game
+      </p>
+
+      <form id="signupForm">
+
+        <!-- FULL NAME -->
+        <div class="form-group">
+
+          <label for="fullName">
+            Full Name
+          </label>
+
+          <input
+            type="text"
+            id="fullName"
+            placeholder="Enter your full name"
+            autocomplete="name"
+            required
+          >
+
+        </div>
+
+
+        <!-- EMAIL -->
+        <div class="form-group">
+
+          <label for="email">
+            Email
+          </label>
+
+          <input
+            type="email"
+            id="email"
+            placeholder="Enter your email"
+            autocomplete="email"
+            required
+          >
+
+        </div>
+
+
+        <!-- PASSWORD -->
+        <div class="form-group">
+
+          <label for="password">
+            Password
+          </label>
+
+          <input
+            type="password"
+            id="password"
+            placeholder="Create password"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          >
+
+        </div>
+
+
+        <!-- CONFIRM PASSWORD -->
+        <div class="form-group">
+
+          <label for="confirmPassword">
+            Confirm Password
+          </label>
+
+          <input
+            type="password"
+            id="confirmPassword"
+            placeholder="Confirm password"
+            autocomplete="new-password"
+            minlength="6"
+            required
+          >
+
+        </div>
+
+
+        <!-- UPI ID -->
+        <div class="form-group">
+
+          <label for="upiId">
+            UPI ID
+          </label>
+
+          <input
+            type="text"
+            id="upiId"
+            placeholder="example@upi"
+            autocomplete="off"
+          >
+
+        </div>
+
+
+        <!-- UPI NUMBER -->
+        <div class="form-group">
+
+          <label for="upiNumber">
+            UPI Number / Mobile Number
+          </label>
+
+          <input
+            type="tel"
+            id="upiNumber"
+            placeholder="10-digit mobile number"
+            maxlength="10"
+            inputmode="numeric"
+            autocomplete="tel"
+          >
+
+        </div>
+
+
+        <p class="upi-note">
+          UPI ID ya UPI Number me se koi ek compulsory hai.
+        </p>
+
+
+        <!-- SIGNUP BUTTON -->
+        <button
+          type="submit"
+          id="signupBtn"
+        >
+          Create Account
+        </button>
+
+
+        <!-- MESSAGE -->
+        <p id="signupMessage"></p>
+
+      </form>
+
+
+      <p class="auth-link">
+
+        Already have an account?
+
+        <a href="login.html">
+          Login
+        </a>
+
+      </p>
+
+    </div>
+
+  </div>
+
+
+  <!-- SUPABASE -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- SUPABASE CONFIG -->
+  <script src="firebase.js"></script>
+
+  <!-- AUTH LOGIC -->
+  <script src="auth.js"></script>
+
+</body>
+
+</html>
