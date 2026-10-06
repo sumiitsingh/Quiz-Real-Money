@@ -104,18 +104,56 @@ async function loadDashboard() {
       profile.email || user.email || "";
 
 
-    // Stats
+    // =========================================
+    // REAL DASHBOARD STATS FROM GAMES TABLE
+    // =========================================
+
+    const { data: games, error: gamesError } =
+      await supabaseClient
+        .from("games")
+        .select(`
+          id,
+          status,
+          reward_amount
+        `)
+        .eq("user_id", user.id);
+
+    if (gamesError) {
+      throw gamesError;
+    }
+
+    const gameList = games || [];
+
+    const gamesPlayed = gameList.length;
+
+    const totalWins = gameList.filter(
+      game => game.status === "won"
+    ).length;
+
+    const totalLosses = gameList.filter(
+      game => game.status === "lost"
+    ).length;
+
+    const totalWinnings = gameList.reduce(
+      (total, game) => {
+        return total + Number(game.reward_amount || 0);
+      },
+      0
+    );
+
+
+    // Display real stats
     document.getElementById("gamesPlayed").textContent =
-      Number(profile.total_games || 0);
+      gamesPlayed;
 
     document.getElementById("totalWins").textContent =
-      Number(profile.total_wins || 0);
+      totalWins;
 
     document.getElementById("totalLosses").textContent =
-      Number(profile.total_losses || 0);
+      totalLosses;
 
     document.getElementById("totalWinnings").textContent =
-      formatMoney(profile.total_winnings);
+      formatMoney(totalWinnings);
 
 
     // Recent payment
